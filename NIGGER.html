@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TimeFlow</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="./styles.css"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey:            "AIzaSyArU10zwd41PATcY2y_8FD_S7LjR1ptXCE",
+    authDomain:        "timeblocks1.firebaseapp.com",
+    projectId:         "timeblocks1",
+    storageBucket:     "timeblocks1.firebasestorage.app",
+    messagingSenderId: "465443568359",
+    appId:             "1:465443568359:web:a42b056897aaa08cbd4042",
+    measurementId:     "G-REDSQV5JEK"
+  });
+  window.TF_DB   = firebase.firestore();
+  window.TF_AUTH = firebase.auth();
+</script>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-logo">⏱</div>
+  <div class="login-title">Time<span>Flow</span></div>
+  <div class="login-sub">Your personal time planner — sign in to save everything</div>
+  <button id="google-login-btn">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" alt="Google"/>
+    Continue with Google
+  </button>
+  <div id="login-error"></div>
+  <div class="login-features">
+    <div class="login-feat"><span>📅</span><span>Schedule</span></div>
+    <div class="login-feat"><span>📊</span><span>Analytics</span></div>
+    <div class="login-feat"><span>🏢</span><span>Business</span></div>
+    <div class="login-feat"><span>🔥</span><span>Streaks</span></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+<nav id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">⏱</div>
+    <div class="sb-logo-text">Time<span>Flow</span></div>
+  </div>
+  <div class="sb-user" onclick="switchView('profile')">
+    <div class="sb-user-avatar" id="sb-av">🐱</div>
+    <div class="sb-user-info">
+      <div class="sb-user-name">Time Architect</div>
+      <div class="sb-user-level" id="sb-lvl">Level 1</div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-nav-section">
+      <div class="sb-nav-section-label">Main</div>
+      <button class="nav-item active" data-view="home"            onclick="switchView('home')">           <span class="ni">📅</span>Schedule</button>
+      <button class="nav-item"        data-view="categories"      onclick="switchView('categories')">     <span class="ni">🗂</span>Categories</button>
+      <button class="nav-item"        data-view="important-dates" onclick="switchView('important-dates')"><span class="ni">📌</span>Important Dates<span class="nb" id="nb-dates"></span></button>
+      <button class="nav-item"        data-view="analytics"       onclick="switchView('analytics')">      <span class="ni">📊</span>Analytics</button>
+    </div>
+    <div class="sb-nav-section">
+      <div class="sb-nav-section-label">Social</div>
+      <button class="nav-item"        data-view="friends"         onclick="switchView('friends')">        <span class="ni">👥</span>Friends</button>
+      <button class="nav-item"        data-view="messages"        onclick="switchView('messages')">       <span class="ni">💬</span>Messages<span class="nb" id="nb-msgs"></span></button>
+    </div>
+    <div class="sb-nav-section">
+      <div class="sb-nav-section-label">Work</div>
+      <button class="nav-item"        data-view="business"        onclick="switchView('business')">       <span class="ni">🏢</span>Business</button>
+    </div>
+  </div>
+  <div class="sb-streak" id="sb-streak-widget">
+    <div class="sb-streak-top">
+      <div class="sb-streak-fire" id="sb-fire">🔥</div>
+      <div class="sb-streak-info">
+        <div class="sb-streak-val" id="sb-streak-val">0</div>
+        <div class="sb-streak-label">Day Streak</div>
+      </div>
+      <div class="sb-streak-pts" id="sb-pts">0 pts</div>
+    </div>
+    <div class="sb-streak-bar"><div class="sb-streak-fill" id="sb-streak-fill" style="width:0%"></div></div>
+    <div class="sb-streak-next" id="sb-streak-next">Place a block to begin!</div>
+  </div>
+  <div class="sb-bottom">
+    <button class="sb-ctrl-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    <button class="sb-ctrl-btn" id="cal-toggle-btn" onclick="toggleCalSidebar()" title="Calendar">📅</button>
+    <button class="sb-ctrl-btn" onclick="toggleCatPanel()" title="Categories">🗂</button>
+    <button class="sb-ctrl-btn" onclick="toggleRightPanel()" title="Activity panel">👥</button>
+  </div>
+</nav>
+
+<div id="main-wrap">
+  <div id="topbar">
+    <button class="topbar-hamburger" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">☰</button>
+    <div><div class="topbar-title" id="topbar-title">Schedule</div></div>
+    <div class="topbar-date-nav" id="date-nav">
+      <button class="dnav-arrow" onclick="changeDate(-1)">←</button>
+      <button class="today-btn" onclick="goToday()">Today</button>
+      <span id="dnav-label">Today</span>
+      <button class="dnav-arrow" onclick="changeDate(1)">→</button>
+    </div>
+    <button id="topbar-notif-btn" onclick="toggleNotif(event)">🔔<span id="topbar-notif-count" style="display:none"></span></button>
+  </div>
+
+  <!-- HOME VIEW -->
+  <div class="view active" id="view-home">
+    <div id="schedule-wrap">
+      <div id="preset-bar">
+        <span class="preset-bar-label">📌 Presets</span>
+        <div id="preset-chips-wrap"></div>
+        <span class="preset-bar-hint" id="preset-bar-hint" style="display:none">Save blocks via ⋯ menu</span>
+      </div>
+      <div id="ws-scroll">
+        <div id="time-col"></div>
+        <div id="grid-area"><div id="now-line"></div></div>
+      </div>
+    </div>
+    <!-- Mobile add-block fab -->
+    <button id="mob-fab" onclick="showMobileAddSheet(null)">+</button>
+    <div id="cat-side-panel">
+      <div class="csp-head">
+        <span>Categories</span>
+        <button class="csp-close" onclick="toggleCatPanel()">×</button>
+      </div>
+      <div id="cat-list-wrap"></div>
+    </div>
+  </div>
+
+  <!-- CATEGORIES VIEW -->
+  <div class="view" id="view-categories">
+    <div class="view-scroll"><div class="view-inner">
+      <div class="view-title">Categories</div>
+      <div class="view-sub">Track how you spend your time across life areas</div>
+      <div class="categories-grid" id="cat-view-grid"></div>
+    </div></div>
+  </div>
+
+  <!-- IMPORTANT DATES -->
+  <div class="view" id="view-important-dates">
+    <div class="view-scroll"><div class="view-inner">
+      <div class="view-title">Important Dates</div>
+      <div class="view-sub">Birthdays, deadlines, milestones — never forget what matters</div>
+      <div class="dates-grid" id="dates-grid"></div>
+    </div></div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="view" id="view-analytics">
+    <div class="view-scroll"><div class="view-inner">
+      <div class="view-title">Analytics</div>
+      <div class="view-sub">Insights into your time and habits</div>
+      <div id="analytics-content"></div>
+    </div></div>
+  </div>
+
+  <!-- FRIENDS -->
+  <div class="view" id="view-friends">
+    <div class="view-scroll"><div class="view-inner">
+      <div class="view-title">Friends</div>
+      <div class="view-sub">Your network and their streaks</div>
+      <!-- Add friend bar -->
+      <div class="add-friend-bar">
+        <div class="add-friend-tag-display" id="my-tag-display">Your tag: <span id="my-tag-val">…</span></div>
+        <div class="add-friend-input-row">
+          <input id="add-friend-input" class="tf-input" placeholder="Enter friend tag e.g. #ABG67852" maxlength="9"/>
+          <button class="friend-btn" onclick="addFriendByTag()">Add Friend</button>
+        </div>
+      </div>
+      <div class="friend-list" id="friend-list"></div>
+    </div></div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div class="view" id="view-messages">
+    <div class="view-scroll"><div class="view-inner">
+      <div class="view-title">Messages</div>
+      <div class="view-sub">Chat with your friends</div>
+      <div class="friend-list" id="msg-friend-list"></div>
+    </div></div>
+  </div>
+
+  <!-- BUSINESS -->
+  <div class="view" id="view-business">
+    <div id="biz-sidebar">
+      <div class="sb-head" style="font-size:12px;font-weight:600;padding:12px">
+        <span>Employees</span>
+        <button class="sb-close" onclick="showAddEmpModal()" style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:7px;font-size:13px">+</button>
+      </div>
+      <div id="emp-list"></div>
+    </div>
+    <div id="biz-main">
+      <div class="biz-topbar">
+        <div style="display:flex;gap:7px">
+          <div class="biz-stat-card"><div class="biz-stat-val" id="bs-shifts">0</div><div class="biz-stat-lbl">Shifts</div></div>
+          <div class="biz-stat-card"><div class="biz-stat-val" id="bs-hours">0h</div><div class="biz-stat-lbl">Hours</div></div>
+          <div class="biz-stat-card"><div class="biz-stat-val" id="bs-emp">0</div><div class="biz-stat-lbl">Staff</div></div>
+          <div class="biz-stat-card"><div class="biz-stat-val" id="bs-conf">0</div><div class="biz-stat-lbl">Conflicts</div></div>
+        </div>
+        <div class="biz-view-controls" id="biz-view-controls">
+          <button class="biz-view-btn active" data-biz-view="week" onclick="setBizViewMode('week')">Week</button>
+          <button class="biz-view-btn" data-biz-view="month" onclick="setBizViewMode('month')">Month</button>
+          <button class="biz-view-btn" data-biz-view="year" onclick="setBizViewMode('year')">Year</button>
+        </div>
+        <div class="biz-week-nav">
+          <button onclick="bizChangeWeek(-1)">← Prev</button>
+          <span id="biz-week-label">This Week</span>
+          <button onclick="bizChangeWeek(1)">Next →</button>
+        </div>
+      </div>
+      <div id="biz-grid-wrap"><div id="biz-grid"><div class="biz-tc" id="biz-tc"></div></div></div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="view" id="view-profile">
+    <div class="view-scroll"><div class="view-inner" id="profile-inner"></div></div>
+  </div>
+</div><!-- #main-wrap -->
+
+<!-- RIGHT PANEL -->
+<div id="right-panel">
+  <div class="rp-section">
+    <div class="rp-title">🏆 Leaderboard</div>
+    <div id="rp-lb"></div>
+  </div>
+  <div class="rp-section" style="flex:1;overflow-y:auto">
+    <div class="rp-title">📡 Activity</div>
+    <div id="rp-activity"></div>
+  </div>
+</div>
+
+<!-- CHAT OVERLAY -->
+<div id="chat-overlay" onclick="handleChatOvClick(event)">
+  <div id="chat-panel">
+    <div id="chat-list-view">
+      <div class="chat-header">
+        <div class="chat-hdr-info"><div class="chat-hdr-name">Messages</div></div>
+        <button class="chat-close" onclick="toggleChat()">✕</button>
+      </div>
+      <div id="chat-friend-list"></div>
+    </div>
+    <div id="chat-msgs-view">
+      <div class="chat-header">
+        <button class="chat-back" onclick="backToChatList()">←</button>
+        <div class="chat-hdr-av" id="chat-av">🐱</div>
+        <div class="chat-hdr-info">
+          <div class="chat-hdr-name" id="chat-name">Friend</div>
+          <div class="chat-hdr-status" id="chat-status">Online</div>
+        </div>
+        <button class="chat-close" onclick="toggleChat()">✕</button>
+      </div>
+      <div id="chat-scroll"></div>
+      <div id="chat-typing"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>
+      <div id="chat-input-area">
+        <input id="chat-input" type="text" placeholder="Type a message…" autocomplete="off"/>
+        <button id="chat-send" onclick="sendMsg()">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIF OVERLAY -->
+<div id="notif-overlay" onclick="closeNotif()">
+  <div id="notif-dd" onclick="event.stopPropagation()">
+    <div class="notif-header"><span>Notifications</span><button class="notif-clear" onclick="clearNotifs()">Clear all</button></div>
+    <div id="notif-list"></div>
+  </div>
+</div>
+
+<!-- MOBILE ADD BLOCK SHEET — hidden by default, opened by JS only -->
+<div id="mob-sheet-overlay" style="display:none" onclick="closeMobileSheet()">
+  <div id="mob-sheet" onclick="event.stopPropagation()">
+    <div class="mob-sheet-handle"></div>
+    <div class="mob-sheet-title">Add Block</div>
+    <div class="mob-sheet-row">
+      <label class="mob-sheet-lbl">Time</label>
+      <select id="mob-hour" class="tf-input" style="flex:1"></select>
+    </div>
+    <div class="mob-sheet-row">
+      <label class="mob-sheet-lbl">Duration</label>
+      <div class="mob-dur-row" id="mob-dur-row">
+        <button class="mob-dur-btn active" data-h="1" onclick="selectMobDur(1)">1h</button>
+        <button class="mob-dur-btn" data-h="2" onclick="selectMobDur(2)">2h</button>
+        <button class="mob-dur-btn" data-h="3" onclick="selectMobDur(3)">3h</button>
+        <button class="mob-dur-btn" data-h="4" onclick="selectMobDur(4)">4h</button>
+      </div>
+    </div>
+    <div class="mob-sheet-row">
+      <label class="mob-sheet-lbl">Label</label>
+      <input id="mob-label" type="text" class="tf-input" placeholder="What are you doing?" style="flex:1"/>
+    </div>
+    <div class="mob-sheet-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <label class="mob-sheet-lbl">Color</label>
+      <div id="mob-color-row" class="mob-color-row"></div>
+    </div>
+    <div class="mob-sheet-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <label class="mob-sheet-lbl">Category</label>
+      <div id="mob-cat-row" class="mob-cat-row"></div>
+    </div>
+    <button id="mob-add-btn" onclick="confirmMobileAdd()">Add Block</button>
+  </div>
+</div>
+
+<!-- FRIEND SCHEDULE VIEWER -->
+<div id="friend-sched-overlay" onclick="closeFriendSched()">
+  <div id="friend-sched-panel" onclick="event.stopPropagation()">
+    <div class="chat-header">
+      <div class="chat-hdr-info"><div class="chat-hdr-name" id="friend-sched-name">Schedule</div></div>
+      <button class="chat-close" onclick="closeFriendSched()">✕</button>
+    </div>
+    <div id="friend-sched-content"></div>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobile-bottom-nav">
+  <button class="mbn-item active" data-view="home"       onclick="switchView('home')">      <span class="mbn-icon">📅</span><span class="mbn-label">Schedule</span></button>
+  <button class="mbn-item"        data-view="categories" onclick="switchView('categories')"><span class="mbn-icon">🗂</span><span class="mbn-label">Categories</span></button>
+  <button class="mbn-item"        data-view="analytics"  onclick="switchView('analytics')"> <span class="mbn-icon">📊</span><span class="mbn-label">Analytics</span></button>
+  <button class="mbn-item"        data-view="friends"    onclick="switchView('friends')">   <span class="mbn-icon">👥</span><span class="mbn-label">Friends</span></button>
+  <button class="mbn-item"        data-view="profile"    onclick="switchView('profile')">   <span class="mbn-icon">👤</span><span class="mbn-label">Profile</span></button>
+</nav>
+</div><!-- #app -->
+
+<div id="dd-portal"></div>
+<div id="toast"></div>
+<div id="milestone-popup">
+  <div class="mp-emoji">🏆</div>
+  <div class="mp-title" id="mp-title">Milestone!</div>
+  <div class="mp-sub"   id="mp-sub"></div>
+  <div class="mp-score" id="mp-score"></div>
+</div>
+
+<!-- SCRIPTS — ORDER IS CRITICAL -->
+<script src="./js/auth.js"></script>
+<script src="./js/state.js"></script>
+<script src="./js/blocks.js"></script>
+<script src="./js/categories.js"></script>
+<script src="./js/analytics.js"></script>
+<script src="./js/chat.js"></script>
+<script src="./js/business.js"></script>
+<script src="./js/ui.js"></script>
+</body>
+</html>
